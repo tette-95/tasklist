@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import javax.persistence.EntityManager;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -34,11 +35,29 @@ public class IndexServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         EntityManager em = DBUtil.createEntityManager();
 
-        List<Tasklist> tasklists = em.createNamedQuery("getAllTasks", Tasklist.class)
+        int page = 1;
+        try {
+            page = Integer.parseInt(request.getParameter("page"));
+        } catch(NumberFormatException e) {}
+
+        // 最大件数と開始位置を指定してメッセージを取得
+        List<Tasklist> tasks = em.createNamedQuery("getAllTasks", Tasklist.class)
+                                   .setFirstResult(15 * (page - 1))
+                                   .setMaxResults(15)
                                    .getResultList();
-        response.getWriter().append(Integer.valueOf(tasklists.size()).toString());
+
+        // 全件数を取得
+        long tasks_count = (long)em.createNamedQuery("getTasksCount", Long.class)
+                                      .getSingleResult();
 
         em.close();
+
+        request.setAttribute("tasks", tasks);
+        request.setAttribute("tasks_count", tasks_count);     // 全件数
+        request.setAttribute("page", page);                         // ページ数
+
+        RequestDispatcher rd = request.getRequestDispatcher("/WEB-INF/views/tasks/index.jsp");
+        rd.forward(request, response);
     }
 
 }
